@@ -1,7 +1,17 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 func main() {
-	fmt.Println("Hello, world changed in acer")
+	a := "From 1: SH"
+	b := strings.Split(a, " ")
+	fmt.Println(b)
+	fmt.Println(len(b))
+
+	if b[2] == "SH" {
+		fmt.Println("ok")
+	}
 }
