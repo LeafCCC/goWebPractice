@@ -9,6 +9,7 @@ import (
 )
 
 func main() {
+
 	//打开连接:
 	conn, err := net.Dial("tcp", "localhost:50000")
 	if err != nil {
@@ -22,7 +23,7 @@ func main() {
 	clientName, err2 := inputReader.ReadString('\n')
 
 	if err2 != nil {
-		fmt.Println("Error name reading,", err2.Error())
+		fmt.Println("Error namel reading,", err2.Error())
 		return
 	}
 
