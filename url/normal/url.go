@@ -15,6 +15,7 @@ var urls = []string{
 	"https://zhihu.com/",
 }
 
+// 获取urls里网站的状态码与使用的协议类型
 func getStatusCode(urls []string) {
 	for _, url := range urls {
 		resp, err := http.Head(url)
@@ -26,6 +27,7 @@ func getStatusCode(urls []string) {
 	}
 }
 
+// 使用get方法访问网址
 func httpFetch() {
 	inputReader := bufio.NewReader(os.Stdin)
 	fmt.Println("Please input the website address: ")
