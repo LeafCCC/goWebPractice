@@ -2,7 +2,7 @@
 package main
 
 import (
-	"errors"
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -13,16 +13,16 @@ import (
 //正则验证
 var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$")
 
-func getTitle(w http.ResponseWriter, r *http.Request) (string, error) {
-	m := validPath.FindStringSubmatch(r.URL.Path)
-	if m == nil {
-		http.NotFound(w, r)
-		return "", errors.New("invalid Page Title")
-	}
-	return m[2], nil // 标题是第二个子表达式。
-}
+//func getTitle(w http.ResponseWriter, r *http.Request) (string, error) {
+//	m := validPath.FindStringSubmatch(r.URL.Path)
+//	if m == nil {
+//		http.NotFound(w, r)
+//		return "", errors.New("invalid Page Title")
+//	}
+//	return m[2], nil // 标题是第二个子表达式。
+//}
 
-//定义标题与正文内容
+//Page 定义标题与正文内容
 type Page struct {
 	Title string
 	Body  []byte
@@ -30,13 +30,13 @@ type Page struct {
 
 //定义页面的保存功能
 func (p *Page) save() error {
-	fileName := "data/" + p.Title + ".txt"
+	fileName := "wiki/data/" + p.Title + ".txt"
 	return os.WriteFile(fileName, p.Body, 0600)
 }
 
 //加载页面
 func loadPage(title string) (*Page, error) {
-	fileName := "data/" + title + ".txt"
+	fileName := "wiki/data/" + title + ".txt"
 	body, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func loadPage(title string) (*Page, error) {
 //}
 
 //模板缓存
-var templates = template.Must(template.ParseFiles("template/edit.html", "template/view.html"))
+var templates = template.Must(template.ParseFiles("wiki/template/edit.html", "wiki/template/view.html"))
 
 //模板处理
 //这里注意 使用缓存后 tmp只需输入文件名 而不是路径
@@ -70,12 +70,12 @@ func renderTemplate(w http.ResponseWriter, tmp string, p *Page) {
 }
 
 //查看页面
-func viewHandler(w http.ResponseWriter, r *http.Request) {
-	title, err := getTitle(w, r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+func viewHandler(w http.ResponseWriter, r *http.Request, title string) {
+	//title, err := getTitle(w, r)
+	//if err != nil {
+	//	http.Error(w, err.Error(), http.StatusInternalServerError)
+	//	return
+	//}
 	p, err := loadPage(title)
 
 	//如果没有该页面则编辑该页面
@@ -87,12 +87,12 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 //编辑页面
-func editHandler(w http.ResponseWriter, r *http.Request) {
-	title, err := getTitle(w, r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+func editHandler(w http.ResponseWriter, r *http.Request, title string) {
+	//title, err := getTitle(w, r)
+	//if err != nil {
+	//	http.Error(w, err.Error(), http.StatusInternalServerError)
+	//	return
+	//}
 	p, err := loadPage(title)
 
 	//该页面不存在的情况
@@ -104,15 +104,15 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 //保存页面的处理
-func saveHandler(w http.ResponseWriter, r *http.Request) {
-	title, err := getTitle(w, r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+func saveHandler(w http.ResponseWriter, r *http.Request, title string) {
+	//title, err := getTitle(w, r)
+	//if err != nil {
+	//	http.Error(w, err.Error(), http.StatusInternalServerError)
+	//	return
+	//}
 	body := r.FormValue("body")
 	p := &Page{title, []byte(body)}
-	err = p.save()
+	err := p.save()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -120,16 +120,32 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/view/"+p.Title, http.StatusFound)
 }
 
-//引入闭包处理
+//引入闭包处理 这样每个处理函数不用再写重复的读取标题的代码
+func makeHandler(f func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		m := validPath.FindStringSubmatch(r.URL.Path)
+		if m == nil {
+			http.NotFound(w, r)
+			return
+		}
+		f(w, r, m[2])
+	}
+}
+
+func homeHandler(w http.ResponseWriter, r *http.Request) {
+	http.Redirect(w, r, "/view/home", http.StatusFound)
+}
 
 func main() {
 	//p1 := &Page{Title: "TestPage", Body: []byte("This is a sample Page.")}
 	//p1.save()
 	//p2, _ := loadPage("TestPage")
 	//fmt.Println(string(p2.Body))
-
-	http.HandleFunc("/view/", viewHandler)
-	http.HandleFunc("/edit/", editHandler)
-	http.HandleFunc("/save/", saveHandler)
+	fmt.Println("Run at localhost:8080")
+	http.HandleFunc("/", homeHandler)
+	http.HandleFunc("/view/", makeHandler(viewHandler))
+	http.HandleFunc("/edit/", makeHandler(editHandler))
+	http.HandleFunc("/save/", makeHandler(saveHandler))
 	log.Fatal(http.ListenAndServe(":8080", nil))
+
 }
